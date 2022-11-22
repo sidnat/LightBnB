@@ -16,18 +16,16 @@ const pool = new Pool({
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithEmail = function(email) {
-  let user;
-  for (const userId in users) {
-    user = users[userId];
-    if (user.email.toLowerCase() === email.toLowerCase()) {
-      break;
-    } else {
-      user = null;
-    }
-  }
-  return Promise.resolve(user);
-}
+const getUserWithEmail = (email) => {
+  return pool
+    .query(`SELECT * FROM users WHERE email LIKE $1`, [email])
+    .then((result) => {
+      return result.rows[0];
+    })
+    .catch(() => {
+      return null;
+    });
+};
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
@@ -35,9 +33,16 @@ exports.getUserWithEmail = getUserWithEmail;
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithId = function(id) {
-  return Promise.resolve(users[id]);
-}
+const getUserWithId = (id) => {
+  return pool
+    .query(`SELECT * FROM users WHERE id = $1`, [id])
+    .then((result) => {
+      return result.rows[0];
+    })
+    .catch(() => {
+      return null
+    });
+};
 exports.getUserWithId = getUserWithId;
 
 
@@ -46,12 +51,29 @@ exports.getUserWithId = getUserWithId;
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-const addUser =  function(user) {
-  const userId = Object.keys(users).length + 1;
-  user.id = userId;
-  users[userId] = user;
-  return Promise.resolve(user);
-}
+
+//  addUser
+//  Accepts a user object that will have a name, email, and password property
+//  This function should insert the new user into the database.
+//  It will return a promise that resolves with the new user object. This object should contain the user's id after it's been added to the database.
+//  Add RETURNING *; to the end of an INSERT query to return the objects that were inserted. This is handy when you need the auto generated id of an object you've just added to the database.
+const addUser = (user) => {
+  const queryString = `
+    INSERT INTO users (name, email, password)
+    VALUES ($1, $2, $3)
+    RETURNING *;
+  `;
+  const values = [user.name, user.email, user.password];
+
+  return pool
+    .query(queryString, values)
+    .then((result) => {
+      return result.rows[0];
+    })
+    .catch(() => {
+      return null
+    });
+};
 exports.addUser = addUser;
 
 /// Reservations
@@ -75,11 +97,10 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 
- const getAllProperties = (options, limit = 10) => {
+const getAllProperties = (options, limit = 10) => {
   return pool
     .query(`SELECT * FROM properties LIMIT $1`, [limit])
     .then((result) => {
-      console.log(result.rows);
       return result.rows;
     })
     .catch((err) => {
