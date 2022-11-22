@@ -51,12 +51,6 @@ exports.getUserWithId = getUserWithId;
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-
-//  addUser
-//  Accepts a user object that will have a name, email, and password property
-//  This function should insert the new user into the database.
-//  It will return a promise that resolves with the new user object. This object should contain the user's id after it's been added to the database.
-//  Add RETURNING *; to the end of an INSERT query to return the objects that were inserted. This is handy when you need the auto generated id of an object you've just added to the database.
 const addUser = (user) => {
   const queryString = `
     INSERT INTO users (name, email, password)
@@ -84,8 +78,28 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
-}
+  const queryString = `
+    SELECT reservations.*, properties.*, avg(rating) as average_rating
+    FROM reservations
+    JOIN properties ON reservations.property_id = properties.id
+    JOIN property_reviews ON properties.id = property_reviews.property_id
+    WHERE reservations.guest_id = $1
+    GROUP BY properties.id, reservations.id
+    ORDER BY reservations.start_date
+    LIMIT $2;
+  `;
+  const values = [guest_id, limit];
+
+  return pool
+    .query(queryString, values)
+    .then((result) => {
+      console.log(result.rows)
+      return result.rows;
+    })
+    .catch(() => {
+      return null
+    });
+};
 exports.getAllReservations = getAllReservations;
 
 /// Properties
